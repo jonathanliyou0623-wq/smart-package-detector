@@ -8,7 +8,7 @@ jobs:
   host-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: cmake -S . -B build
       - name: Build
@@ -19,7 +19,7 @@ jobs:
   arduino-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: arduino/compile-sketches@v1
         with:
           fqbn: esp32:esp32:esp32
@@ -27,6 +27,6 @@ jobs:
             - name: esp32:esp32
               source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
           libraries: |
-            - name: Adafruit VL53L0X
+            - name: Adafruit_VL53L0X
           sketch-paths: |
             - firmware/smart_package_detector
