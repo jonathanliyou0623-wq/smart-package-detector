@@ -6,9 +6,9 @@
 #include "detector_config.h"
 
 enum class DetectorState : uint8_t {
-  Calibrating,
-  Clear,
-  PackagePresent,
+  Calibrating,   // Learning the empty-door baseline / 学习空门口基准距离
+  Clear,         // No persistent obstruction / 没有持续遮挡
+  PackagePresent,  // A persistent object has been confirmed / 已确认有物体
 };
 
 enum class DetectorEvent : uint8_t {
@@ -23,11 +23,13 @@ class PackageDetector {
   explicit PackageDetector(DetectorConfig config = {}) : config_(config) {}
 
   DetectorEvent update(uint16_t distanceMm) {
+    // Zero is treated as invalid input / 0 被视为无效测距，不改变状态。
     if (distanceMm == 0) {
       return DetectorEvent::None;
     }
 
     if (state_ == DetectorState::Calibrating) {
+      // Average the first valid samples / 对启动阶段的有效样本取平均值。
       calibrationTotal_ += distanceMm;
       ++calibrationCount_;
       if (calibrationCount_ >= config_.calibrationSamples) {
@@ -44,14 +46,18 @@ class PackageDetector {
       filteredMm_ = static_cast<float>(distanceMm);
       hasFilteredReading_ = true;
     } else {
+      // Exponential moving average (EMA) / 指数移动平均，减小随机抖动。
       filteredMm_ += config_.measurementAlpha *
                      (static_cast<float>(distanceMm) - filteredMm_);
     }
 
+    // Positive value means something is closer than the learned background.
+    // 正值表示当前物体比学习到的背景更靠近传感器。
     const float obstructionMm = baselineMm_ - filteredMm_;
 
     if (state_ == DetectorState::Clear) {
       if (obstructionMm >= config_.detectionDeltaMm) {
+        // Require multiple samples / 连续满足条件后才确认，过滤路人等短暂遮挡。
         ++transitionCount_;
         if (transitionCount_ >= config_.detectionSamples) {
           transitionCount_ = 0;
@@ -60,10 +66,13 @@ class PackageDetector {
         }
       } else {
         transitionCount_ = 0;
+        // Track slow environmental drift only while clear.
+        // 只在无快递状态下缓慢更新基准，避免把快递学习成背景。
         baselineMm_ += config_.baselineAlpha * (filteredMm_ - baselineMm_);
       }
     } else {
       if (obstructionMm <= config_.clearDeltaMm) {
+        // Removal also needs confirmation / 快递移除也需要连续样本确认。
         ++transitionCount_;
         if (transitionCount_ >= config_.clearSamples) {
           transitionCount_ = 0;

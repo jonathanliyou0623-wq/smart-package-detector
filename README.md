@@ -31,14 +31,23 @@ The detector:
 - requires sustained clearance before reporting removal; and
 - updates its baseline slowly only while the doorway is clear.
 
-## Hardware
+## Hardware used / selected
 
-- ESP32 development board
-- VL53L0X time-of-flight distance sensor
-- Breadboard and jumper wires
-- USB cable and a 2.4 GHz Wi-Fi network for later notification work
+| Part | Model or type | Role | Current status |
+| --- | --- | --- | --- |
+| Microcontroller board | ESP32 development board (`ESP32 Dev Module` board profile) | Runs the sensing and detection firmware; provides Wi-Fi for a later notification stage | Upload and serial output validated |
+| Distance sensor | STMicroelectronics VL53L0X ToF sensor | Measures the distance to the doorway area with invisible infrared light | Selected; physical integration is the next milestone |
+| Prototyping board | Mini solderless breadboard | Makes temporary connections without soldering | Available |
+| Wiring | Male-male, male-female, and female-female Dupont jumper wires | Connects the ESP32, breadboard, and sensor | Available |
+| Connection/power | USB data cable | Powers and programs the ESP32 | Validated |
 
-See [the wiring guide](docs/wiring.md) before powering the circuit.
+The Arduino board profile is recorded here because it is known; the exact manufacturer/version printed on the ESP32 board and VL53L0X breakout will be added after the next physical hardware check rather than guessed. See [hardware notes](docs/hardware.md) and [the wiring guide](docs/wiring.md).
+
+## Learning as I build
+
+This is intentionally an iterative learning project. I first verified one layer at a time—computer-to-board upload, serial output, then hardware-independent detection logic—before adding the sensor. Keeping the detection state machine independent from Arduino lets me test ideas with simulated distance data while the physical prototype is still being assembled.
+
+I am documenting both completed work and open questions in a [learning log](docs/learning-log.md). This keeps the repository honest and makes design decisions traceable.
 
 ## Repository layout
 
@@ -50,6 +59,8 @@ firmware/smart_package_detector/
 tests/
   test_package_detector.cpp    Host-side state-machine tests
 docs/wiring.md                 Pin map and bring-up checklist
+docs/hardware.md               Device descriptions and selection notes
+docs/learning-log.md           Progress, lessons, and next experiments
 ```
 
 ## Run the host-side tests

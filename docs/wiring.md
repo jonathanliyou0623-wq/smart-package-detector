@@ -1,5 +1,7 @@
 # VL53L0X wiring and bring-up
 
+> Planned first-prototype wiring / 第一版计划接线。The pin map must be checked against the labels printed on the actual breakout board before power is connected.
+
 ## Pin map
 
 Connect the board with USB power disconnected.
