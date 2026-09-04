@@ -47,7 +47,7 @@ The Arduino board profile is recorded here because it is known; the exact manufa
 
 This is intentionally an iterative learning project. I first verified one layer at a time—computer-to-board upload, serial output, then hardware-independent detection logic—before adding the sensor. Keeping the detection state machine independent from Arduino lets me test ideas with simulated distance data while the physical prototype is still being assembled.
 
-I am documenting both completed work and open questions in a [learning log](docs/learning-log.md). This keeps the repository honest and makes design decisions traceable.
+Completed work and open questions are reflected directly in the project-status checklist and engineering notes so that the public repository stays concise and honest.
 
 ## Repository layout
 
@@ -60,7 +60,6 @@ tests/
   test_package_detector.cpp    Host-side state-machine tests
 docs/wiring.md                 Pin map and bring-up checklist
 docs/hardware.md               Device descriptions and selection notes
-docs/learning-log.md           Progress, lessons, and next experiments
 ```
 
 ## Run the host-side tests
