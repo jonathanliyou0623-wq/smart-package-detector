@@ -1,0 +1,21 @@
+# Arduino / embedded build output
+build/
+.pio/
+*.bin
+*.elf
+*.hex
+*.exe
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local credentials (never commit these)
+secrets.h
+*.local.h
+.env
+
+# Local planning notes
+PROJECT_MEMORY.md
