@@ -6,7 +6,7 @@ This page records what each device does, why it was selected, and what has actua
 
 **Known identification:** Arduino IDE board profile `ESP32 Dev Module`; exact board manufacturer/revision still to be recorded.
 
-The ESP32 is the microcontroller at the center of the prototype. It runs the Arduino firmware, reads the sensor over I2C, applies the package-detection logic, and can later use its built-in Wi-Fi capability to send a notification.
+The ESP32 is the microcontroller at the center of the prototype. It runs the Arduino firmware and package-detection logic, and serves a local Wi-Fi dashboard. The sensor sketch is prepared for I2C integration; delivery notifications are a later stage.
 
 Why it fits this project:
 
@@ -15,7 +15,7 @@ Why it fits this project:
 - inexpensive and supported by Arduino IDE; and
 - easy serial logging during development.
 
-**Verified so far:** the computer recognizes the board, firmware uploads successfully, and the Serial Monitor receives program output.
+**Verified so far (September 6, 2026):** firmware upload, serial output, Wi-Fi connection, and local HTTP communication. The physical board runs synthetic distance samples through the detector and reports calibration, arrival, and removal to the live dashboard. See the [simulation results](simulation.md).
 
 ## VL53L0X distance sensor
 
@@ -32,7 +32,7 @@ Why it was selected:
 
 The reading can still vary because of ambient infrared light, surface color, angle, multi-path reflections, and normal measurement uncertainty. The firmware therefore filters samples and requires a change to persist before reporting an event.
 
-**Verified so far:** the software dependency and ESP32 firmware compile in CI. Physical wiring and real-distance measurements are still pending.
+**Current status:** selected but not yet purchased or connected. The software dependency and sensor firmware have compiled in CI. Physical wiring and real-distance measurements are still pending.
 
 ## Mini solderless breadboard
 

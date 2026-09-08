@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Prepare placeholder Wi-Fi configuration for compile-only CI
+        run: cp firmware/wifi_status/secrets.example.h firmware/wifi_status/secrets.h
       - uses: arduino/compile-sketches@v1
         with:
           fqbn: esp32:esp32:esp32
@@ -30,3 +32,4 @@ jobs:
             - name: Adafruit_VL53L0X
           sketch-paths: |
             - firmware/smart_package_detector
+            - firmware/wifi_status
