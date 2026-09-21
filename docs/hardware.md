@@ -6,7 +6,7 @@ This page records what each device does, why it was selected, and what has actua
 
 **Known identification:** Arduino IDE board profile `ESP32 Dev Module`; exact board manufacturer/revision still to be recorded.
 
-The ESP32 is the microcontroller at the center of the prototype. It runs the Arduino firmware and package-detection logic, and serves a local Wi-Fi dashboard. The sensor sketch is prepared for I2C integration; delivery notifications are a later stage.
+The ESP32 is the microcontroller at the center of the prototype. It reads the sensor over I2C, runs the package-detection logic, and serves a local Wi-Fi dashboard. Delivery notifications are a later stage.
 
 Why it fits this project:
 
@@ -15,11 +15,11 @@ Why it fits this project:
 - inexpensive and supported by Arduino IDE; and
 - easy serial logging during development.
 
-**Verified so far (September 6, 2026):** firmware upload, serial output, Wi-Fi connection, and local HTTP communication. The physical board runs synthetic distance samples through the detector and reports calibration, arrival, and removal to the live dashboard. See the [simulation results](simulation.md).
+**Verified through September 21, 2026:** firmware upload, serial output, Wi-Fi, local HTTP communication, VL53L0X I2C measurements, and real tabletop arrival/removal detection. Both the earlier [simulation](simulation.md) and the [real sensor test](real-sensor-test.md) report calibration, arrival, and removal on the physical ESP32.
 
 ## VL53L0X distance sensor
 
-**Model:** VL53L0X from STMicroelectronics. The exact breakout-board manufacturer will be recorded after physical inspection.
+**Model:** VL53L0X from STMicroelectronics on a breakout marked `VL53LXX-V2`; manufacturer is unknown.
 
 The VL53L0X is a **time-of-flight (ToF) distance sensor**. It emits invisible infrared light and estimates distance from the returning light. In this project, a package should make the measured distance shorter than the learned empty-door baseline.
 
@@ -32,7 +32,7 @@ Why it was selected:
 
 The reading can still vary because of ambient infrared light, surface color, angle, multi-path reflections, and normal measurement uncertainty. The firmware therefore filters samples and requires a change to persist before reporting an event.
 
-**Current status:** selected but not yet purchased or connected. The software dependency and sensor firmware have compiled in CI. Physical wiring and real-distance measurements are still pending.
+**Current status:** the header has been soldered and checked for solder bridges. The board is connected to ESP32 3V3, GND, GPIO21/SDA, and GPIO22/SCL. Real valid readings, baseline calibration, arrival detection, removal detection, and the local Wi-Fi dashboard have been verified in a controlled white-paper tabletop setup. Doorway placement and broader target testing remain open.
 
 ## Mini solderless breadboard
 
@@ -52,9 +52,8 @@ The USB cable supplies power during bench testing and carries firmware uploads a
 
 ## Hardware record to complete
 
-At the next physical session, record:
+At a future doorway session, record:
 
 - the text printed on the ESP32 module and development board;
-- the VL53L0X breakout-board manufacturer and pin labels;
 - the measured empty-door distance and mounting angle; and
 - representative readings for no package, a small box, and a large box.

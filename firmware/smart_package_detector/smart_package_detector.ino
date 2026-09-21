@@ -1,6 +1,7 @@
 #include <Adafruit_VL53L0X.h>
 
 #include "package_detector.h"
+#include "desktop_test_config.h"
 
 namespace {
 constexpr uint32_t kSerialBaud = 115200;
@@ -8,8 +9,20 @@ constexpr uint32_t kSerialBaud = 115200;
 constexpr uint32_t kSampleIntervalMs = 100;
 
 Adafruit_VL53L0X sensor;
-PackageDetector detector;
+PackageDetector detector(desktopTestConfig());
 uint32_t lastSampleAt = 0;
+
+const char* stateName(DetectorState state) {
+  switch (state) {
+    case DetectorState::Calibrating:
+      return "calibrating";
+    case DetectorState::Clear:
+      return "clear";
+    case DetectorState::PackagePresent:
+      return "package_present";
+  }
+  return "unknown";
+}
 
 void printEvent(DetectorEvent event) {
   switch (event) {
@@ -33,6 +46,7 @@ void setup() {
   Serial.begin(kSerialBaud);
   delay(500);
   Serial.println("\nSmart Package Detector");
+  Serial.println("TABLETOP TEST: detect_delta=60 mm clear_delta=30 mm; fixed baseline");
 
   if (!sensor.begin()) {
     // Fail visibly instead of continuing with fake data.
@@ -54,13 +68,22 @@ void loop() {
   }
   lastSampleAt = now;
 
-  VL53L0X_RangingMeasurementData_t measurement;
+  VL53L0X_RangingMeasurementData_t measurement{};
   // Read one ToF measurement / 从 VL53L0X 读取一次飞行时间测距结果。
-  sensor.rangingTest(&measurement, false);
+  const VL53L0X_Error error =
+      sensor.getSingleRangingMeasurement(&measurement, false);
 
-  if (measurement.RangeStatus == 4) {
-    // Status 4 means out of range / 状态 4 表示超出有效测量范围。
-    Serial.println("WARN: out-of-range sample ignored");
+  if (error != VL53L0X_ERROR_NONE) {
+    Serial.printf("WARN: measurement failed api_error=%d; sample ignored\n",
+                  static_cast<int>(error));
+    return;
+  }
+
+  // Only status 0 is valid; other statuses must not update the baseline.
+  // 只有状态 0 表示有效测距；无效读数不能参与滤波、校准或检测。
+  if (measurement.RangeStatus != 0) {
+    Serial.printf("WARN: invalid range status=%u raw_mm=%u; sample ignored\n",
+                  measurement.RangeStatus, measurement.RangeMilliMeter);
     return;
   }
 
@@ -69,9 +92,11 @@ void loop() {
   // 硬件读取到此结束；判断逻辑放在独立类中，便于在电脑上测试。
   const DetectorEvent event = detector.update(distanceMm);
 
-  Serial.printf("distance=%u mm filtered=%u mm baseline=%u mm\n",
+  Serial.printf(
+      "distance=%u mm filtered=%u mm baseline=%u mm status=0 state=%s\n",
                 distanceMm,
                 detector.filteredMm(),
-                detector.baselineMm());
+                detector.baselineMm(),
+                stateName(detector.state()));
   printEvent(event);
 }

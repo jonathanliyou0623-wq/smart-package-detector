@@ -5,9 +5,17 @@
 [![Status](https://img.shields.io/badge/status-hardware%20prototype-orange)](#project-status)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-An independent embedded-systems project being built to detect when a package is placed near an apartment or dorm door. The planned sensor prototype pairs an ESP32 with a VL53L0X time-of-flight distance sensor, with a small state machine to reject brief occlusions instead of treating every distance change as a delivery.
+An independent embedded-systems project that detects when an object is placed in front of a VL53L0X time-of-flight distance sensor. An ESP32 filters the measurements, rejects brief occlusions, and serves the live result over local Wi-Fi.
 
-> **September 6, 2026 milestone:** Wi-Fi connectivity and a live web dashboard have been validated on a physical ESP32. Simulated distance inputs drive the detection algorithm through calibration, arrival, and removal. **The VL53L0X has not yet been purchased or connected; real sensor measurements are the next milestone.**
+> **September 21, 2026 milestone:** The soldered VL53L0X, ESP32 detection logic, and local Wi-Fi dashboard completed a controlled tabletop arrival/removal test. With a white-paper background at about 315 mm, a tissue roll produced about 211 mm and one arrival event; removing it returned about 317 mm and produced one removal event.
+
+## Real sensor dashboard
+
+The current firmware reads only valid VL53L0X measurements, learns an empty-scene baseline, and exposes the detector state through a bilingual local webpage and JSON API. The page includes live and filtered distance, baseline, valid/invalid sample counts, event counters, history, and a recalibration control.
+
+![ESP32 dashboard after a real sensor arrival/removal test](docs/images/real-sensor-clear.png)
+
+*Actual ESP32-hosted page after the controlled tabletop test. It shows the restored 315 mm empty scene, one detected arrival, one removal, and 7,543 valid samples with no invalid samples during this run. See the [test record and limitations](docs/real-sensor-test.md).*
 
 ## Simulation running on ESP32
 
@@ -36,8 +44,7 @@ Delivery notifications report when a carrier marks an item delivered, not whethe
 
 ```mermaid
 flowchart LR
-    S[Simulated distance<br/>validated on ESP32] --> B[ESP32<br/>filter + baseline]
-    A[VL53L0X<br/>next hardware step] -. planned .-> B
+    A[VL53L0X<br/>real distance] --> B[ESP32<br/>filter + baseline]
     B --> C[Debounced<br/>state machine]
     C --> D[Serial events +<br/>local web dashboard]
     C -. future .-> E[Delivery notification]
@@ -56,7 +63,7 @@ The detector:
 | Part | Model or type | Role | Current status |
 | --- | --- | --- | --- |
 | Microcontroller board | ESP32 development board (`ESP32 Dev Module` board profile) | Runs firmware and serves the local Wi-Fi dashboard | Upload, serial, Wi-Fi, and simulated detection validated |
-| Distance sensor | STMicroelectronics VL53L0X ToF sensor | Will provide real distance measurements | Selected; not yet purchased or connected |
+| Distance sensor | VL53L0X ToF breakout marked `VL53LXX-V2` | Provides real distance measurements over I2C | Header soldered; communication, valid readings, and tabletop detection validated |
 | Prototyping board | Mini solderless breadboard | Makes temporary connections without soldering | Available |
 | Wiring | Male-male, male-female, and female-female Dupont jumper wires | Connects the ESP32, breadboard, and sensor | Available |
 | Connection/power | USB data cable | Powers and programs the ESP32 | Validated |
@@ -80,10 +87,15 @@ firmware/wifi_status/
   wifi_status.ino              Live dashboard and HTTP API on ESP32
   simulation.h                Synthetic distance input sequence
   secrets.example.h           Placeholder configuration; real secrets stay local
+firmware/real_sensor_dashboard/
+  real_sensor_dashboard.ino   VL53L0X input plus live Wi-Fi dashboard
+  secrets.example.h           Placeholder configuration; real secrets stay local
 tests/
   test_package_detector.cpp    Host-side state-machine tests
+  test_desktop_profile.cpp     Regression test based on real tabletop readings
   test_simulation.cpp          Repeated cycles, confirmation delay, and reset
 docs/simulation.md             Experiment, evidence, and limits
+docs/real-sensor-test.md       Real measurement procedure, results, and limits
 docs/images/                   Actual simulation dashboard screenshots
 docs/wiring.md                 Pin map and bring-up checklist
 docs/hardware.md               Device descriptions and selection notes
@@ -91,7 +103,7 @@ docs/hardware.md               Device descriptions and selection notes
 
 ## Run the host-side tests
 
-The core detection logic has no Arduino dependency, so it can be tested before the sensor arrives.
+The core detection logic has no Arduino dependency, so algorithm changes can be tested on a computer without connected hardware.
 
 ```bash
 cmake -S . -B build
@@ -106,22 +118,21 @@ Follow the [simulation setup](firmware/wifi_status/README.md), upload `wifi_stat
 and open the address printed in Serial Monitor. The webpage is embedded in that
 sketch; it does not need a separate computer-hosted server.
 
-## Upload the sensor sketch after wiring the VL53L0X
+## Upload the real sensor dashboard
 
 1. Install the ESP32 board package in Arduino IDE.
 2. Install the `Adafruit VL53L0X` library from Library Manager.
-3. Open `firmware/smart_package_detector/smart_package_detector.ino`.
-4. Select **ESP32 Dev Module** and the correct serial port.
-5. Upload, then open Serial Monitor at **115200 baud**.
+3. Copy `firmware/real_sensor_dashboard/secrets.example.h` to `secrets.h` and enter local Wi-Fi credentials.
+4. Open `firmware/real_sensor_dashboard/real_sensor_dashboard.ino`.
+5. Select **ESP32 Dev Module** and the correct serial port.
+6. Upload, then open Serial Monitor at **115200 baud** and visit the printed local address.
 
-Illustrative expected startup output after a sensor is connected (not an observed
-hardware result yet):
+Observed startup output:
 
 ```text
-Smart Package Detector
-VL53L0X online. Calibrating...
-Baseline ready: 812 mm
-EVENT: package detected
+Real VL53L0X Wi-Fi dashboard
+VL53L0X online.
+Open http://10.0.0.47/
 ```
 
 ## Project status
@@ -132,8 +143,9 @@ EVENT: package detected
 - [x] ESP32 Wi-Fi connection and local HTTP dashboard validated
 - [x] Simulated arrival/removal sequence verified on the physical ESP32
 - [x] Dashboard restart, event history, and counters verified
-- [ ] Obtain the selected VL53L0X sensor
-- [ ] Connect and validate VL53L0X measurements
+- [x] Obtain, solder, connect, and validate the VL53L0X sensor
+- [x] Validate real arrival/removal detection in a controlled tabletop setup
+- [x] Integrate real sensor measurements into the local Wi-Fi dashboard
 - [ ] Collect doorway data and tune thresholds
 - [ ] Add Wi-Fi notifications without committing credentials
 - [ ] Evaluate optional camera-based classification

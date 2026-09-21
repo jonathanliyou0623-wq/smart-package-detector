@@ -44,17 +44,16 @@ Screenshots were captured from the live board after multiple repeated cycles.
 Counters reflect the capture moment. The simulation badge and sensor disclaimer
 are deliberately visible in both images.
 
-## Validation and next hardware step
+## Simulation validation
 
 - Compiled and uploaded the simulation sketch through Arduino IDE.
 - Verified calibration, arrival, removal, counter reset, and local webpage updates
   on the physical ESP32.
 - Host-side tests cover three simulated cycles, confirmation delays, event
   counters, and reset, alongside the original detector tests.
-- CI runs the host tests and compiles both sketches; its Wi-Fi configuration uses
+- CI runs the host tests and compiles all three sketches; its Wi-Fi configuration uses
   placeholders, so no credentials are required in the repository.
 
-Next: obtain the VL53L0X, verify the actual breakout pin labels, follow the
-[wiring checklist](wiring.md), and collect real distance readings before tuning
-thresholds. Real sensor behavior, notification delivery, and network outage
-recovery remain unverified.
+This was the September 6 sensor-free milestone. The VL53L0X was subsequently
+wired and tested; see the [real sensor test](real-sensor-test.md). Notification
+delivery, network outage recovery, and real-doorway behavior remain unverified.

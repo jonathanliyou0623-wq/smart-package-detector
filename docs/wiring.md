@@ -17,6 +17,17 @@ Connect the board with USB power disconnected.
 
 ## Physical placement
 
+### Current tabletop test profile
+
+The sensor sketch currently uses `desktop_test_config.h`, tuned for the measured
+paper-covered table (~311 mm) and tissue roll (~200 mm). It detects a sustained
+60 mm decrease and clears when the remaining decrease is at most 30 mm. The
+8-sample arrival and 12-sample removal confirmation counts are unchanged.
+The baseline is fixed after startup calibration for this controlled experiment;
+restart with the scene empty whenever the sensor or background moves. These are
+experimental tabletop settings, not validated doorway settings. The Wi-Fi
+simulation retains its original configuration.
+
 - Aim the sensor at a fixed background surface, not open space.
 - Keep the expected package location inside the sensor's field of view.
 - Mount the sensor rigidly; small angle changes can shift the baseline.
@@ -34,3 +45,15 @@ Connect the board with USB power disconnected.
 ## Troubleshooting
 
 If the firmware prints `VL53L0X not found`, disconnect USB and check power, ground, and the two I2C lines. If readings are constantly out of range, move the target closer and avoid highly reflective, transparent, or very dark surfaces during initial testing.
+
+The sensor sketch accepts a measurement only when the API call succeeds and
+`RangeStatus` is `0`. Valid serial readings end with `status=0`. A
+`WARN: invalid range status=... raw_mm=...; sample ignored` line is diagnostic:
+`raw_mm` is not a valid distance and does not update filtering, calibration, or
+package detection. Status `2` means the return signal is too weak (signal fail).
+Try a broad matte target in front of the optical window and check for obstruction.
+An `api_error` warning instead means the measurement API call failed.
+
+Each valid line also reports the detector state: `calibrating`, `clear`, or
+`package_present`. This persistent state makes the result observable even if a
+one-time `EVENT:` line occurred before Serial Monitor was opened.

@@ -3,6 +3,11 @@ project(smart_package_detector LANGUAGES CXX)
 
 enable_testing()
 
+add_executable(desktop_profile_tests tests/test_desktop_profile.cpp)
+target_include_directories(desktop_profile_tests PRIVATE firmware/smart_package_detector)
+target_compile_features(desktop_profile_tests PRIVATE cxx_std_17)
+add_test(NAME desktop_profile_tests COMMAND desktop_profile_tests)
+
 add_executable(package_detector_tests tests/test_package_detector.cpp)
 target_include_directories(
   package_detector_tests
@@ -18,13 +23,23 @@ endif()
 
 add_test(NAME package_detector_tests COMMAND package_detector_tests)
 
-# Arduino builds each sketch in isolation. Keep the demo's bundled headers
-# identical to the sensor sketch's source of truth.
+# Arduino builds each sketch in isolation. Keep bundled headers identical to
+# the sensor sketch's source of truth.
 foreach(header package_detector.h detector_config.h)
-  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/firmware/smart_package_detector/${header}" sensor_hash)
-  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/firmware/wifi_status/${header}" demo_hash)
-  if(NOT sensor_hash STREQUAL demo_hash)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/firmware/smart_package_detector/${header}" sensor_source)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/firmware/wifi_status/${header}" demo_source)
+  string(REPLACE "\r\n" "\n" sensor_source "${sensor_source}")
+  string(REPLACE "\r\n" "\n" demo_source "${demo_source}")
+  string(REGEX REPLACE "\n+$" "" sensor_source "${sensor_source}")
+  string(REGEX REPLACE "\n+$" "" demo_source "${demo_source}")
+  if(NOT sensor_source STREQUAL demo_source)
     message(FATAL_ERROR "Synchronize wifi_status/${header} from smart_package_detector/${header}")
+  endif()
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/firmware/real_sensor_dashboard/${header}" dashboard_source)
+  string(REPLACE "\r\n" "\n" dashboard_source "${dashboard_source}")
+  string(REGEX REPLACE "\n+$" "" dashboard_source "${dashboard_source}")
+  if(NOT sensor_source STREQUAL dashboard_source)
+    message(FATAL_ERROR "Synchronize real_sensor_dashboard/${header} from smart_package_detector/${header}")
   endif()
 endforeach()
 add_executable(simulation_tests tests/test_simulation.cpp)

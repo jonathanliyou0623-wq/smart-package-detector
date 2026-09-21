@@ -21,7 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Prepare placeholder Wi-Fi configuration for compile-only CI
-        run: cp firmware/wifi_status/secrets.example.h firmware/wifi_status/secrets.h
+        run: |
+          cp firmware/wifi_status/secrets.example.h firmware/wifi_status/secrets.h
+          cp firmware/real_sensor_dashboard/secrets.example.h firmware/real_sensor_dashboard/secrets.h
       - uses: arduino/compile-sketches@v1
         with:
           fqbn: esp32:esp32:esp32
@@ -33,3 +35,4 @@ jobs:
           sketch-paths: |
             - firmware/smart_package_detector
             - firmware/wifi_status
+            - firmware/real_sensor_dashboard
