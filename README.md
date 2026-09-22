@@ -11,7 +11,7 @@ An independent embedded-systems project that detects when an object is placed in
 
 ## Real sensor dashboard
 
-The current firmware reads only valid VL53L0X measurements, learns an empty-scene baseline, and exposes the detector state through a bilingual local webpage and JSON API. The page includes live and filtered distance, baseline, valid/invalid sample counts, event counters, history, and a recalibration control.
+The current firmware reads only valid VL53L0X measurements, learns an empty-scene baseline, and exposes the detector state through a bilingual local webpage and JSON API. The page includes live and filtered distance, baseline, valid/invalid sample counts, event counters, history, recalibration, manual experiment markers, and a [CSV download of recent measurements](docs/data-logging.md).
 
 ![ESP32 dashboard after a real sensor arrival/removal test](docs/images/real-sensor-clear.png)
 
@@ -89,13 +89,16 @@ firmware/wifi_status/
   secrets.example.h           Placeholder configuration; real secrets stay local
 firmware/real_sensor_dashboard/
   real_sensor_dashboard.ino   VL53L0X input plus live Wi-Fi dashboard
+  sample_log.h                Bounded measurement history and CSV formatting
   secrets.example.h           Placeholder configuration; real secrets stay local
 tests/
   test_package_detector.cpp    Host-side state-machine tests
   test_desktop_profile.cpp     Regression test based on real tabletop readings
+  test_sample_log.cpp          Ring-buffer and CSV-format tests
   test_simulation.cpp          Repeated cycles, confirmation delay, and reset
 docs/simulation.md             Experiment, evidence, and limits
 docs/real-sensor-test.md       Real measurement procedure, results, and limits
+docs/data-logging.md           Measurement CSV fields and experiment workflow
 docs/images/                   Actual simulation dashboard screenshots
 docs/wiring.md                 Pin map and bring-up checklist
 docs/hardware.md               Device descriptions and selection notes
@@ -146,6 +149,8 @@ Open http://10.0.0.47/
 - [x] Obtain, solder, connect, and validate the VL53L0X sensor
 - [x] Validate real arrival/removal detection in a controlled tabletop setup
 - [x] Integrate real sensor measurements into the local Wi-Fi dashboard
+- [x] Add bounded measurement history, experiment markers, and CSV export
+- [ ] Collect labeled trials and calculate false-positive rate and detection latency
 - [ ] Collect doorway data and tune thresholds
 - [ ] Add Wi-Fi notifications without committing credentials
 - [ ] Evaluate optional camera-based classification

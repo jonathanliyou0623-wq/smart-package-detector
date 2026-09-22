@@ -10,3 +10,9 @@ The current thresholds are tuned for the controlled tabletop experiment. An
 obstruction must persist for about five seconds before an arrival is reported.
 Use **Recalibrate empty background** whenever the sensor or background moves, and
 keep the scene empty until calibration finishes.
+
+The webpage also provides **Download measurements CSV** and three manual action
+markers. The device retains the latest 1,200 rows in RAM (roughly two minutes
+at 10 Hz); older rows are overwritten and power loss clears the history. See the
+[CSV field guide](../../docs/data-logging.md) before using the data for timing or
+accuracy claims.

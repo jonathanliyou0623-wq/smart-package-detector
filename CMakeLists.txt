@@ -8,6 +8,11 @@ target_include_directories(desktop_profile_tests PRIVATE firmware/smart_package_
 target_compile_features(desktop_profile_tests PRIVATE cxx_std_17)
 add_test(NAME desktop_profile_tests COMMAND desktop_profile_tests)
 
+add_executable(sample_log_tests tests/test_sample_log.cpp)
+target_include_directories(sample_log_tests PRIVATE firmware/real_sensor_dashboard)
+target_compile_features(sample_log_tests PRIVATE cxx_std_17)
+add_test(NAME sample_log_tests COMMAND sample_log_tests)
+
 add_executable(package_detector_tests tests/test_package_detector.cpp)
 target_include_directories(
   package_detector_tests
