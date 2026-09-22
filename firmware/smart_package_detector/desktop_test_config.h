@@ -8,6 +8,8 @@ inline DetectorConfig desktopTestConfig() {
   DetectorConfig config;
   config.detectionDeltaMm = 60;
   config.clearDeltaMm = 30;
+  // At 10 Hz, 50 consecutive samples require about five seconds of presence.
+  config.detectionSamples = 50;
   config.baselineAlpha = 0.0f;
   return config;
 }

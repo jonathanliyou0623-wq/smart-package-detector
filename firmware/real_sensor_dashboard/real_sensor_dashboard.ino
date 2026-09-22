@@ -25,6 +25,7 @@ uint32_t arrivals = 0;
 uint32_t removals = 0;
 uint32_t lastSampleAt = 0;
 uint32_t lastReconnectAt = 0;
+uint32_t lastSensorRetryAt = 0;
 String eventHistory;
 
 const char* stateName() {
@@ -63,7 +64,18 @@ void resetDetector() {
 }
 
 void sampleSensor() {
-  if (!sensorConnected) return;
+  if (!sensorConnected) {
+    const uint32_t now = millis();
+    if (now - lastSensorRetryAt >= 2000) {
+      lastSensorRetryAt = now;
+      sensorConnected = sensor.begin();
+      if (sensorConnected) {
+        Serial.println("VL53L0X reconnected. Recalibrating...");
+        resetDetector();
+      }
+    }
+    return;
+  }
   VL53L0X_RangingMeasurementData_t measurement{};
   const VL53L0X_Error error =
       sensor.getSingleRangingMeasurement(&measurement, false);
@@ -121,7 +133,7 @@ button:disabled{opacity:.55}li{margin:8px 0}#events{padding-left:22px;font-size:
 <dt>Wi-Fi signal</dt><dd id="rssi">--</dd>
 <dt>Running for</dt><dd id="uptime">--</dd>
 <dt>Last update</dt><dd id="updated">--</dd></dl>
-<p class="note">Tabletop test profile: an object is detected after the filtered distance stays at least 60 mm closer than the learned empty background. Keep the scene empty during the first 3 seconds after calibration starts.</p>
+<p class="note">Tabletop test profile: an object must stay at least 60 mm closer than the learned empty background for about 5 seconds before detection. Brief passers-by are ignored. Keep the scene empty during the first 3 seconds after calibration starts.</p>
 <button id="recalibrate" type="button">Recalibrate empty background / 重新校准</button>
 <p id="action" role="status"></p><h2>Recent events / 最近事件</h2>
 <ul id="events"><li>Waiting for readings...</li></ul></main><script>

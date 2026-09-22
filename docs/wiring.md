@@ -22,7 +22,8 @@ Connect the board with USB power disconnected.
 The sensor sketch currently uses `desktop_test_config.h`, tuned for the measured
 paper-covered table (~311 mm) and tissue roll (~200 mm). It detects a sustained
 60 mm decrease and clears when the remaining decrease is at most 30 mm. The
-8-sample arrival and 12-sample removal confirmation counts are unchanged.
+tabletop profile now requires 50 consecutive arrival samples (about 5 seconds at
+10 Hz) and 12 removal samples (about 1.2 seconds).
 The baseline is fixed after startup calibration for this controlled experiment;
 restart with the scene empty whenever the sensor or background moves. These are
 experimental tabletop settings, not validated doorway settings. The Wi-Fi

@@ -16,11 +16,14 @@ int main() {
   PackageDetector detector(config);
   for (int i = 0; i < config.calibrationSamples; ++i) detector.update(311);
   expect(detector.state() == DetectorState::Clear, "empty scene calibrates");
-  // Recorded empty-table and tissue-roll ranges, including a brief interruption.
+  // Recorded empty-table and tissue-roll ranges, including a four-second
+  // obstruction that must not be treated as a delivery.
   for (int i = 0; i < 100; ++i) detector.update(306 + i % 10);
-  for (int i = 0; i < 3; ++i) detector.update(200);
+  for (int i = 0; i < 40; ++i) detector.update(200);
+  expect(detector.state() == DetectorState::Clear,
+         "four-second obstruction is ignored");
   for (int i = 0; i < 50; ++i) detector.update(311);
-  expect(detector.state() == DetectorState::Clear, "brief obstruction is ignored");
+  expect(detector.state() == DetectorState::Clear, "clear scene resets confirmation");
   int arrivals = 0;
   for (int i = 0; i < 100; ++i)
     arrivals += detector.update(196 + i % 9) == DetectorEvent::PackageDetected;

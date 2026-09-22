@@ -46,7 +46,7 @@ void setup() {
   Serial.begin(kSerialBaud);
   delay(500);
   Serial.println("\nSmart Package Detector");
-  Serial.println("TABLETOP TEST: detect_delta=60 mm clear_delta=30 mm; fixed baseline");
+  Serial.println("TABLETOP TEST: detect_delta=60 mm, arrival=5 s, fixed baseline");
 
   if (!sensor.begin()) {
     // Fail visibly instead of continuing with fake data.
