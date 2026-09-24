@@ -9,6 +9,8 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **September 21, 2026 milestone:** The soldered VL53L0X, ESP32 detection logic, and local Wi-Fi dashboard completed a controlled tabletop arrival/removal test. With a white-paper background at about 315 mm, a tissue roll produced about 211 mm and one arrival event; removing it returned about 317 mm and produced one removal event.
 
+> **September 23, 2026 measurement milestone:** Timestamped CSV data showed that a 2.6-second hand obstruction was rejected, a sustained tissue-roll placement triggered after 50 qualifying samples (4.907 seconds), and removal cleared after 12 qualifying samples (1.100 seconds). These are individual controlled trials, not aggregate accuracy claims.
+
 ## Real sensor dashboard
 
 The current firmware reads only valid VL53L0X measurements, learns an empty-scene baseline, and exposes the detector state through a bilingual local webpage and JSON API. The page includes live and filtered distance, baseline, valid/invalid sample counts, event counters, history, recalibration, manual experiment markers, and a [CSV download of recent measurements](docs/data-logging.md).
@@ -150,7 +152,8 @@ Open http://10.0.0.47/
 - [x] Validate real arrival/removal detection in a controlled tabletop setup
 - [x] Integrate real sensor measurements into the local Wi-Fi dashboard
 - [x] Add bounded measurement history, experiment markers, and CSV export
-- [ ] Collect labeled trials and calculate false-positive rate and detection latency
+- [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
+- [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds
 - [ ] Add Wi-Fi notifications without committing credentials
 - [ ] Evaluate optional camera-based classification

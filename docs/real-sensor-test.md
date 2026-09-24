@@ -62,3 +62,28 @@ roll placement produced one arrival/removal cycle. Placement and removal times
 were not timestamped independently, so the experiment does not directly measure
 the actual detection or removal latency. The sensor still cannot tell a package
 from another object that stays in view for long enough.
+
+## Timestamped labeled trial (September 23)
+
+The dashboard's RAM ring buffer and manual marker controls were used for a first
+timestamped trial set. The setup remained the same: a white-paper background and
+a tissue roll as the test object. The detector baseline was 305 mm.
+
+| Trial | Observed samples | Result |
+| --- | --- | --- |
+| Brief hand pass | Minimum raw distance 87 mm; 26 consecutive qualifying samples, approximately 2.6 s | Rejected; state stayed `clear` and no arrival event occurred |
+| Tissue roll placed | Filtered distance first crossed the 245 mm arrival threshold at 244 mm | Detected after 50 qualifying samples and 4.907 s; event distance 225 mm |
+| Tissue roll removed | Filtered distance first crossed the 275 mm clear threshold at 276 mm | Cleared after 12 qualifying samples and 1.100 s; event distance 327 mm |
+
+The removal marker preceded the removal event by 2.499 seconds. That interval
+includes the user's physical action; the 1.100-second value starts when the
+filtered measurement first satisfied the clear condition. The placement marker
+was overwritten before download, so the 4.907-second value likewise measures the
+detector from its first qualifying sample, not from the user's click.
+
+All 1,200 retained rows in the placement and removal downloads were valid sensor
+returns, and the completed cycle produced one arrival and one removal. This is
+evidence for the configured confirmation timing in one controlled cycle. It is
+not enough to report precision, recall, overall accuracy, or false positives per
+hour; those require repeated labeled objects, non-package obstructions, and
+longer unattended runs.
