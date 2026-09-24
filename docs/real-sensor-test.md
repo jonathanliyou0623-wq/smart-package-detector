@@ -87,3 +87,25 @@ evidence for the configured confirmation timing in one controlled cycle. It is
 not enough to report precision, recall, overall accuracy, or false positives per
 hour; those require repeated labeled objects, non-package obstructions, and
 longer unattended runs.
+
+### Three-cycle repeatability check
+
+Three additional placement/removal cycles were run with the same 305 mm baseline
+and tissue roll. Every placement produced one arrival transition and every
+removal produced one clear transition.
+
+| Measurement | Trials | Mean | Range | Sample standard deviation |
+| --- | ---: | ---: | ---: | ---: |
+| Arrival confirmation after first qualifying filtered sample | 3 | 4.941 s | 4.910–5.004 s | 0.054 s |
+| Removal confirmation after first qualifying filtered sample | 3 | 1.101 s | 1.100–1.102 s | 0.001 s |
+
+The three placement trials and three removal trials therefore completed 3/3
+expected state transitions in this fixed geometry. Two removal marker rows were
+not present in the downloaded CSV, but their sensor samples and removal events
+were retained and support the algorithm-delay measurements. Human marker-to-event
+time is excluded from the summary because it includes the time needed to move the
+object into or out of the sensor beam.
+
+This small repeated set demonstrates deterministic confirmation timing for one
+object and setup. It still cannot be interpreted as a general detection accuracy
+or false-positive rate.

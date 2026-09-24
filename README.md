@@ -9,7 +9,7 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **September 21, 2026 milestone:** The soldered VL53L0X, ESP32 detection logic, and local Wi-Fi dashboard completed a controlled tabletop arrival/removal test. With a white-paper background at about 315 mm, a tissue roll produced about 211 mm and one arrival event; removing it returned about 317 mm and produced one removal event.
 
-> **September 23, 2026 measurement milestone:** Timestamped CSV data showed that a 2.6-second hand obstruction was rejected, a sustained tissue-roll placement triggered after 50 qualifying samples (4.907 seconds), and removal cleared after 12 qualifying samples (1.100 seconds). These are individual controlled trials, not aggregate accuracy claims.
+> **September 23, 2026 measurement milestone:** Timestamped CSV data showed that a 2.6-second hand obstruction was rejected. Three additional tissue-roll cycles all produced the expected arrival and removal transitions; arrival confirmation averaged 4.941 seconds (4.910–5.004 s) and removal confirmation averaged 1.101 seconds (1.100–1.102 s). These are controlled repeatability results, not general accuracy claims.
 
 ## Real sensor dashboard
 
