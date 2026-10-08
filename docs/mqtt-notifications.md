@@ -65,17 +65,27 @@ The dashboard and `/api/status` expose:
 | `mqtt_failures` | Failed connect, connection, or publish operations |
 | `mqtt_last_error` | Short local diagnostic without credentials |
 
-## End-to-end validation still required
+## End-to-end validation
 
-The disabled path has been uploaded and verified on the physical ESP32. The
-enabled path and fixed queue compile successfully, and the queue has host-side
-tests for FIFO order, overflow, retries, and stale acknowledgements. A real
-broker is still required for these hardware checks:
+On October 8, 2026, the enabled firmware was compiled and uploaded to the
+physical ESP32 with a local, ignored EMQX Cloud Serverless configuration. The
+device synchronized its clock, completed certificate-validated TLS, and reported
+`mqtt_connected=true`. A separate MQTTX Web client subscribed over WSS to
+`smart-package-detector/esp32-01/events` and received both sides of a controlled
+gum-container cycle:
 
-1. Confirm TLS connection and one arrival/removal payload pair.
-2. Disconnect Wi-Fi, trigger an event, and verify `mqtt_pending` increases.
-3. Restore Wi-Fi and verify the queued event publishes once connectivity returns.
-4. Confirm no credentials or local configuration appear in `git status`.
+| Sequence | Event | Raw | Filtered | Baseline | Attempt |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 3 | `package_detected` | 236 mm | 237 mm | 323 mm | 1 |
+| 4 | `package_removed` | 321 mm | 322 mm | 323 mm | 1 |
 
-Do not claim live notification delivery until those checks pass with the chosen
-broker.
+After the pair, the device reported four publishes since boot, zero queued
+events, zero drops, and zero failures. Subscriber observation confirms broker
+delivery for this controlled test rather than relying only on PubSubClient's
+local QoS 0 return value. The local configuration remained excluded by
+`*.local.h`; credentials are not present in the repository.
+
+Outage recovery remains a separate hardware check: interrupt connectivity,
+trigger an event, verify `mqtt_pending` increases, restore connectivity, and
+confirm the subscriber receives the queued event. Until that check is complete,
+the project does not claim verified reconnect delivery.

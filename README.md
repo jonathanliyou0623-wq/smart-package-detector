@@ -13,6 +13,8 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **October 7, 2026 reliability milestone:** After a 29-minute 50-second empty-scene run exposed rare HTTP-related sampling delays, acquisition was moved to a dedicated FreeRTOS task. A three-minute stress run completed 180 full CSV downloads with a 100 ms median, 100 ms 95th-percentile, and 101 ms maximum sample interval, with no invalid readings or detector events. A subsequent gum-container cycle confirmed arrival in 4.900 seconds and removal in 1.100 seconds, with 100 ms maximum intervals in both confirmation windows.
 
+> **October 8, 2026 notification milestone:** The ESP32 established a certificate-validated TLS connection to an EMQX Cloud Serverless broker and published a controlled gum-container arrival/removal pair. An independent MQTTX Web subscriber received both QoS 0 JSON messages on `smart-package-detector/esp32-01/events`; the device reported four total publishes, zero pending events, zero drops, and zero failures after the test.
+
 ## Real sensor dashboard
 
 The current firmware reads only valid VL53L0X measurements in a dedicated
@@ -22,8 +24,9 @@ and filtered distance, baseline, valid/invalid sample counts, event counters,
 history, recalibration, manual experiment markers, and a
 [CSV download of recent measurements](docs/data-logging.md). An optional
 [MQTT/TLS notification path](docs/mqtt-notifications.md) queues arrival and
-removal events without performing network work in the sensor task; real broker
-delivery is still awaiting configuration and hardware validation.
+removal events without performing network work in the sensor task. Real broker
+delivery of one controlled arrival/removal pair has been verified with an
+independent MQTTX subscriber.
 
 ![ESP32 dashboard after a real sensor arrival/removal test](docs/images/real-sensor-clear.png)
 
@@ -59,7 +62,7 @@ flowchart LR
     A[VL53L0X<br/>real distance] --> B[ESP32<br/>filter + baseline]
     B --> C[Debounced<br/>state machine]
     C --> D[Serial events +<br/>local web dashboard]
-    C -. future .-> E[Delivery notification]
+    C --> E[Queued MQTT/TLS<br/>event notification]
 ```
 
 The detector:
@@ -167,7 +170,8 @@ Open http://10.0.0.47/
 - [x] Add bounded measurement history, experiment markers, and CSV export
 - [x] Isolate sensor acquisition from HTTP/CSV handling with a dedicated FreeRTOS task
 - [x] Add a bounded event queue and optional MQTT/TLS publishing path
-- [ ] Configure a real broker and validate publish, outage queueing, and reconnect delivery
+- [x] Configure a real TLS broker and validate subscriber-observed arrival/removal delivery
+- [ ] Validate outage queueing and reconnect delivery on hardware
 - [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
 - [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds
