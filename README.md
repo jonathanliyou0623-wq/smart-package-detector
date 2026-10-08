@@ -20,7 +20,10 @@ FreeRTOS task, learns an empty-scene baseline, and exposes thread-safe state
 snapshots through a bilingual local webpage and JSON API. The page includes live
 and filtered distance, baseline, valid/invalid sample counts, event counters,
 history, recalibration, manual experiment markers, and a
-[CSV download of recent measurements](docs/data-logging.md).
+[CSV download of recent measurements](docs/data-logging.md). An optional
+[MQTT/TLS notification path](docs/mqtt-notifications.md) queues arrival and
+removal events without performing network work in the sensor task; real broker
+delivery is still awaiting configuration and hardware validation.
 
 ![ESP32 dashboard after a real sensor arrival/removal test](docs/images/real-sensor-clear.png)
 
@@ -99,6 +102,8 @@ firmware/wifi_status/
 firmware/real_sensor_dashboard/
   real_sensor_dashboard.ino   VL53L0X input plus live Wi-Fi dashboard
   sample_log.h                Bounded measurement history and CSV formatting
+  notification_queue.h       Fixed offline event queue for MQTT publishing
+  mqtt_config.h              Safe defaults plus ignored local broker overrides
   secrets.example.h           Placeholder configuration; real secrets stay local
 tests/
   test_package_detector.cpp    Host-side state-machine tests
@@ -108,6 +113,7 @@ tests/
 docs/simulation.md             Experiment, evidence, and limits
 docs/real-sensor-test.md       Real measurement procedure, results, and limits
 docs/data-logging.md           Measurement CSV fields and experiment workflow
+docs/mqtt-notifications.md     TLS broker setup, payloads, and delivery limits
 docs/images/                   Actual simulation dashboard screenshots
 docs/wiring.md                 Pin map and bring-up checklist
 docs/hardware.md               Device descriptions and selection notes
@@ -160,10 +166,11 @@ Open http://10.0.0.47/
 - [x] Integrate real sensor measurements into the local Wi-Fi dashboard
 - [x] Add bounded measurement history, experiment markers, and CSV export
 - [x] Isolate sensor acquisition from HTTP/CSV handling with a dedicated FreeRTOS task
+- [x] Add a bounded event queue and optional MQTT/TLS publishing path
+- [ ] Configure a real broker and validate publish, outage queueing, and reconnect delivery
 - [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
 - [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds
-- [ ] Add Wi-Fi notifications without committing credentials
 - [ ] Evaluate optional camera-based classification
 
 ## Engineering notes

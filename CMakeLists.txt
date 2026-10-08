@@ -13,6 +13,11 @@ target_include_directories(sample_log_tests PRIVATE firmware/real_sensor_dashboa
 target_compile_features(sample_log_tests PRIVATE cxx_std_17)
 add_test(NAME sample_log_tests COMMAND sample_log_tests)
 
+add_executable(notification_queue_tests tests/test_notification_queue.cpp)
+target_include_directories(notification_queue_tests PRIVATE firmware/real_sensor_dashboard)
+target_compile_features(notification_queue_tests PRIVATE cxx_std_17)
+add_test(NAME notification_queue_tests COMMAND notification_queue_tests)
+
 add_executable(package_detector_tests tests/test_package_detector.cpp)
 target_include_directories(
   package_detector_tests
