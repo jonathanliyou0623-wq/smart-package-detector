@@ -10,6 +10,14 @@ Open the ESP32's local webpage and select **Download measurements CSV**, or requ
 `GET /api/samples.csv`. No computer-side server is needed. The CSV is streamed
 in small chunks, so the device does not assemble the entire file in RAM.
 
+The VL53L0X runs in a dedicated FreeRTOS task pinned to ESP32 core 1 and scheduled
+every 100 ms. A mutex protects detector state and the live ring buffer. The CSV
+handler holds that mutex only while copying the buffer into a fixed-size snapshot,
+then releases it before any network write; new readings therefore continue without
+changing rows in the active download. The snapshot adds about 28 KB of static RAM,
+and the sampling task reserves a 6 KB runtime stack. FreeRTOS scheduling improves
+isolation from HTTP traffic but is not a hard real-time guarantee.
+
 ![ESP32 dashboard with recent-row count, manual markers, and CSV download](images/real-sensor-data-logging.png)
 
 *Live ESP32 page during an empty-scene run, with 798 valid readings recorded.*
@@ -37,3 +45,45 @@ reporting false-positive or detection-rate metrics.
 
 The history is lost on reboot or power loss. CSV files are local experimental
 data and are not automatically uploaded to GitHub.
+
+## Save a session automatically on Windows
+
+Run the repository's PowerShell recorder with the device's current local address:
+
+```powershell
+.\tools\capture_sensor_session.ps1 -BaseUrl http://10.0.0.47 -DurationSeconds 1800 -IntervalSeconds 10
+```
+
+The address above is the last verified address, not a permanent assignment. The
+recorder requires no firmware changes. It creates a new local directory under
+`build/experiments/`, downloads the complete rolling CSV at each interval, and
+writes capture times, device status, failures, and observed uptime resets to
+`captures.jsonl`. Stop early with Ctrl+C; completed snapshots remain on disk.
+
+Snapshots deliberately overlap. Do not sum their row counts when analyzing a
+session. Reconcile overlapping rows within each device boot before calculating
+metrics; device uptime starts again after a restart. The recorded boot segment
+only identifies resets observed through decreasing status uptime, so inspect
+outages and timestamp discontinuities as well. A network interruption longer
+than the device's retained history can still lose measurements. The recorder
+logs failed requests rather than treating them as successful empty captures.
+
+An October 7, 2026 live smoke test saved all four scheduled snapshots over 25
+seconds, with 1,200 rows per snapshot. The snapshots contained 1,420 distinct
+valid records within the observed boot. This verifies basic capture and local
+retention; deliberate disconnection and reboot recovery remain untested.
+
+To compare sampling with and without periodic CSV downloads, keep the sensor
+scene stationary, wait until the buffer contains 1,200 rows, and run:
+
+```powershell
+.\tools\measure_capture_timing.ps1 -BaseUrl http://10.0.0.47 -PhaseSeconds 30
+```
+
+The script saves three consecutive windows: quiet, a download every 10 seconds,
+and quiet again. It reports intervals between logged sensor samples and retains
+the source snapshots locally. The snapshots taken to inspect quiet windows are
+outside the measured windows; whole-second boundary exclusions also separate
+the phases. Do not run another recorder or download CSV files during this test.
+Use `-DownloadIntervalSeconds 1` for a deliberate high-load comparison that
+requests one full snapshot per second; the default remains 10 seconds.

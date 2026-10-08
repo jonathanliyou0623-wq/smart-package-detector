@@ -57,5 +57,26 @@ int main() {
   expect(std::strstr(row, ",manual_marker,") != nullptr &&
              std::strstr(row, ",none,object_placed\n") != nullptr,
          "manual action markers are exported beside sensor readings");
+
+  SampleLog snapshot;
+  snapshot = log;
+  // While a download reads the snapshot, more than one buffer's worth of
+  // live samples can arrive. Its original rows must remain unchanged.
+  for (size_t i = 0; i < SampleLog::kCapacity + 17; ++i) {
+    record.uptimeMs = 200000 + i * 100;
+    log.append(record);
+    const size_t snapshotIndex = i % snapshot.size();
+    expect(snapshot.oldest(snapshotIndex).uptimeMs == (snapshotIndex + 3) * 100,
+           "export snapshot remains ordered while live buffer wraps");
+  }
+  expect(snapshot.size() == SampleLog::kCapacity,
+         "export snapshot retains its original row count");
+  formatSampleCsvRow(row, sizeof(row), snapshot.oldest(snapshot.size() - 1));
+  expect(std::strcmp(row,
+         "120200,valid,0,0,200,205,312,package_present,package_detected,none\n") == 0,
+         "export snapshot retains its original final event");
+  expect(log.oldest(log.size() - 1).uptimeMs >
+             snapshot.oldest(snapshot.size() - 1).uptimeMs,
+         "live sampling continues independently of the export snapshot");
   std::cout << "Sample log tests passed.\n";
 }

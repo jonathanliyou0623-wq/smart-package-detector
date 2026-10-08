@@ -16,3 +16,8 @@ markers. The device retains the latest 1,200 rows in RAM (roughly two minutes
 at 10 Hz); older rows are overwritten and power loss clears the history. See the
 [CSV field guide](../../docs/data-logging.md) before using the data for timing or
 accuracy claims.
+
+Sensor acquisition runs in a dedicated FreeRTOS task on ESP32 core 1. HTTP
+handlers take short mutex-protected snapshots of detector state or the ring
+buffer and release the mutex before sending network data, so a slow CSV client
+does not block the normal 100 ms measurement schedule.

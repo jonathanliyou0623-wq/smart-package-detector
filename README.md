@@ -11,9 +11,16 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **September 23, 2026 measurement milestone:** Timestamped CSV data showed that a 2.6-second hand obstruction was rejected. Three additional tissue-roll cycles all produced the expected arrival and removal transitions; arrival confirmation averaged 4.941 seconds (4.910–5.004 s) and removal confirmation averaged 1.101 seconds (1.100–1.102 s). These are controlled repeatability results, not general accuracy claims.
 
+> **October 7, 2026 reliability milestone:** After a 29-minute 50-second empty-scene run exposed rare HTTP-related sampling delays, acquisition was moved to a dedicated FreeRTOS task. A three-minute stress run completed 180 full CSV downloads with a 100 ms median, 100 ms 95th-percentile, and 101 ms maximum sample interval, with no invalid readings or detector events. A subsequent gum-container cycle confirmed arrival in 4.900 seconds and removal in 1.100 seconds, with 100 ms maximum intervals in both confirmation windows.
+
 ## Real sensor dashboard
 
-The current firmware reads only valid VL53L0X measurements, learns an empty-scene baseline, and exposes the detector state through a bilingual local webpage and JSON API. The page includes live and filtered distance, baseline, valid/invalid sample counts, event counters, history, recalibration, manual experiment markers, and a [CSV download of recent measurements](docs/data-logging.md).
+The current firmware reads only valid VL53L0X measurements in a dedicated
+FreeRTOS task, learns an empty-scene baseline, and exposes thread-safe state
+snapshots through a bilingual local webpage and JSON API. The page includes live
+and filtered distance, baseline, valid/invalid sample counts, event counters,
+history, recalibration, manual experiment markers, and a
+[CSV download of recent measurements](docs/data-logging.md).
 
 ![ESP32 dashboard after a real sensor arrival/removal test](docs/images/real-sensor-clear.png)
 
@@ -152,6 +159,7 @@ Open http://10.0.0.47/
 - [x] Validate real arrival/removal detection in a controlled tabletop setup
 - [x] Integrate real sensor measurements into the local Wi-Fi dashboard
 - [x] Add bounded measurement history, experiment markers, and CSV export
+- [x] Isolate sensor acquisition from HTTP/CSV handling with a dedicated FreeRTOS task
 - [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
 - [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds

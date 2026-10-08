@@ -2,6 +2,9 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <cstring>
 
 #include "desktop_test_config.h"
@@ -12,11 +15,17 @@
 namespace {
 constexpr uint32_t kSampleIntervalMs = 100;
 constexpr size_t kMaxEvents = 6;
+constexpr uint32_t kSensorTaskStackBytes = 6144;
+constexpr UBaseType_t kSensorTaskPriority = 2;
+constexpr BaseType_t kSensorTaskCore = 1;
 
 Adafruit_VL53L0X sensor;
 WebServer server(80);
 PackageDetector detector(desktopTestConfig());
 SampleLog sampleLog;
+SemaphoreHandle_t stateMutex = nullptr;
+TaskHandle_t sensorTaskHandle = nullptr;
+bool sensorTaskStarted = false;
 bool sensorConnected = false;
 bool wasWifiConnected = false;
 bool hasValidReading = false;
@@ -31,10 +40,34 @@ uint32_t lastReconnectAt = 0;
 uint32_t lastSensorRetryAt = 0;
 String eventHistory;
 
-void appendSample(SampleQuality quality, uint16_t rawMm = 0,
-                  int16_t apiError = 0, uint8_t rangeStatus = 255,
-                  DetectorEvent event = DetectorEvent::None,
-                  ExperimentMarker marker = ExperimentMarker::None) {
+struct StatusSnapshot {
+  bool sensorConnected = false;
+  bool hasValidReading = false;
+  uint8_t rangeStatus = 255;
+  DetectorState detectorState = DetectorState::Calibrating;
+  uint16_t distanceMm = 0;
+  uint16_t filteredMm = 0;
+  uint16_t baselineMm = 0;
+  uint32_t validSamples = 0;
+  uint32_t invalidSamples = 0;
+  uint32_t arrivals = 0;
+  uint32_t removals = 0;
+  size_t recordedRows = 0;
+  char events[700]{};
+};
+
+void lockState() {
+  xSemaphoreTake(stateMutex, portMAX_DELAY);
+}
+
+void unlockState() {
+  xSemaphoreGive(stateMutex);
+}
+
+void appendSampleLocked(SampleQuality quality, uint16_t rawMm = 0,
+                        int16_t apiError = 0, uint8_t rangeStatus = 255,
+                        DetectorEvent event = DetectorEvent::None,
+                        ExperimentMarker marker = ExperimentMarker::None) {
   SampleRecord record;
   record.uptimeMs = esp_timer_get_time() / 1000ULL;
   record.quality = quality;
@@ -49,8 +82,8 @@ void appendSample(SampleQuality quality, uint16_t rawMm = 0,
   sampleLog.append(record);
 }
 
-const char* stateName() {
-  switch (detector.state()) {
+const char* stateName(DetectorState state) {
+  switch (state) {
     case DetectorState::Calibrating: return "Calibrating";
     case DetectorState::Clear: return "No package";
     case DetectorState::PackagePresent: return "Package detected";
@@ -58,7 +91,7 @@ const char* stateName() {
   return "Unknown";
 }
 
-void recordEvent(const char* label) {
+void recordEventLocked(const char* label) {
   char entry[100];
   snprintf(entry, sizeof(entry), "%lu s: %s",
            static_cast<unsigned long>(millis() / 1000), label);
@@ -74,7 +107,7 @@ void recordEvent(const char* label) {
   }
 }
 
-void resetDetector() {
+void resetDetectorLocked() {
   detector = PackageDetector(desktopTestConfig());
   hasValidReading = false;
   distanceMm = 0;
@@ -82,23 +115,31 @@ void resetDetector() {
   validSamples = 0;
   invalidSamples = 0;
   eventHistory = "";
-  recordEvent("Calibration restarted");
-  appendSample(SampleQuality::CalibrationReset);
+  recordEventLocked("Calibration restarted");
+  appendSampleLocked(SampleQuality::CalibrationReset);
 }
 
 void sampleSensor() {
-  if (!sensorConnected) {
+  lockState();
+  const bool connected = sensorConnected;
+  unlockState();
+  if (!connected) {
+    lockState();
     hasValidReading = false;
     distanceMm = 0;
     lastRangeStatus = 255;
-    appendSample(SampleQuality::SensorOffline);
+    appendSampleLocked(SampleQuality::SensorOffline);
+    unlockState();
     const uint32_t now = millis();
     if (now - lastSensorRetryAt >= 2000) {
       lastSensorRetryAt = now;
-      sensorConnected = sensor.begin();
-      if (sensorConnected) {
+      const bool reconnected = sensor.begin();
+      if (reconnected) {
         Serial.println("VL53L0X reconnected. Recalibrating...");
-        resetDetector();
+        lockState();
+        sensorConnected = true;
+        resetDetectorLocked();
+        unlockState();
       }
     }
     return;
@@ -107,20 +148,24 @@ void sampleSensor() {
   const VL53L0X_Error error =
       sensor.getSingleRangingMeasurement(&measurement, false);
   if (error != VL53L0X_ERROR_NONE) {
+    lockState();
     ++invalidSamples;
     hasValidReading = false;
     distanceMm = 0;
     lastRangeStatus = 255;
-    appendSample(SampleQuality::ApiError, 0, static_cast<int16_t>(error));
+    appendSampleLocked(SampleQuality::ApiError, 0, static_cast<int16_t>(error));
+    unlockState();
     return;
   }
+  lockState();
   lastRangeStatus = measurement.RangeStatus;
   if (lastRangeStatus != 0) {
     ++invalidSamples;
     hasValidReading = false;
     distanceMm = 0;
-    appendSample(SampleQuality::RangeInvalid, measurement.RangeMilliMeter,
-                 0, lastRangeStatus);
+    appendSampleLocked(SampleQuality::RangeInvalid, measurement.RangeMilliMeter,
+                       0, lastRangeStatus);
+    unlockState();
     return;
   }
 
@@ -130,20 +175,64 @@ void sampleSensor() {
   const DetectorEvent event = detector.update(distanceMm);
   switch (event) {
     case DetectorEvent::CalibrationComplete:
-      recordEvent("Baseline ready");
+      recordEventLocked("Baseline ready");
       break;
     case DetectorEvent::PackageDetected:
       ++arrivals;
-      recordEvent("Package detected");
+      recordEventLocked("Package detected");
       break;
     case DetectorEvent::PackageRemoved:
       ++removals;
-      recordEvent("Package removed");
+      recordEventLocked("Package removed");
       break;
     case DetectorEvent::None:
       break;
   }
-  appendSample(SampleQuality::Valid, distanceMm, 0, 0, event);
+  appendSampleLocked(SampleQuality::Valid, distanceMm, 0, 0, event);
+  unlockState();
+}
+
+void sampleSensorIfDue() {
+  const uint32_t now = millis();
+  if (now - lastSampleAt >= kSampleIntervalMs) {
+    lastSampleAt = now;
+    sampleSensor();
+  }
+}
+
+void sensorTask(void*) {
+  TickType_t lastWake = xTaskGetTickCount();
+  const TickType_t interval = pdMS_TO_TICKS(kSampleIntervalMs);
+  while (true) {
+    vTaskDelayUntil(&lastWake, interval);
+    sampleSensor();
+  }
+}
+
+StatusSnapshot captureStatusSnapshot() {
+  StatusSnapshot snapshot;
+  lockState();
+  snapshot.sensorConnected = sensorConnected;
+  snapshot.hasValidReading = hasValidReading;
+  snapshot.rangeStatus = lastRangeStatus;
+  snapshot.detectorState = detector.state();
+  snapshot.distanceMm = distanceMm;
+  snapshot.filteredMm = detector.filteredMm();
+  snapshot.baselineMm = detector.baselineMm();
+  snapshot.validSamples = validSamples;
+  snapshot.invalidSamples = invalidSamples;
+  snapshot.arrivals = arrivals;
+  snapshot.removals = removals;
+  snapshot.recordedRows = sampleLog.size();
+  eventHistory.toCharArray(snapshot.events, sizeof(snapshot.events));
+  unlockState();
+  return snapshot;
+}
+
+void copySampleLog(SampleLog& destination) {
+  lockState();
+  destination = sampleLog;
+  unlockState();
 }
 
 const char kPage[] PROGMEM = R"HTML(<!doctype html>
@@ -203,6 +292,11 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   Serial.println("\nReal VL53L0X Wi-Fi dashboard");
+  stateMutex = xSemaphoreCreateMutex();
+  if (stateMutex == nullptr) {
+    Serial.println("ERROR: Could not create state mutex.");
+    while (true) delay(1000);
+  }
   sensorConnected = sensor.begin();
   Serial.println(sensorConnected ? "VL53L0X online." : "ERROR: VL53L0X not found.");
 
@@ -215,6 +309,7 @@ void setup() {
     server.send_P(200, "text/html; charset=utf-8", kPage);
   });
   server.on("/api/status", HTTP_GET, []() {
+    const StatusSnapshot snapshot = captureStatusSnapshot();
     char json[1600];
     snprintf(json, sizeof(json),
       "{\"uptime_seconds\":%llu,\"wifi_connected\":%s,\"rssi_dbm\":%ld,"
@@ -225,17 +320,22 @@ void setup() {
       "\"record_capacity\":%lu,\"events\":\"%s\"}",
       static_cast<unsigned long long>(esp_timer_get_time() / 1000000ULL),
       WiFi.status() == WL_CONNECTED ? "true" : "false", static_cast<long>(WiFi.RSSI()),
-      sensorConnected ? "true" : "false", hasValidReading ? "true" : "false",
-      lastRangeStatus, stateName(), distanceMm, detector.filteredMm(), detector.baselineMm(),
-      static_cast<unsigned long>(validSamples), static_cast<unsigned long>(invalidSamples),
-      static_cast<unsigned long>(arrivals), static_cast<unsigned long>(removals),
-      static_cast<unsigned long>(sampleLog.size()),
-      static_cast<unsigned long>(SampleLog::kCapacity), eventHistory.c_str());
+      snapshot.sensorConnected ? "true" : "false",
+      snapshot.hasValidReading ? "true" : "false", snapshot.rangeStatus,
+      stateName(snapshot.detectorState), snapshot.distanceMm, snapshot.filteredMm,
+      snapshot.baselineMm, static_cast<unsigned long>(snapshot.validSamples),
+      static_cast<unsigned long>(snapshot.invalidSamples),
+      static_cast<unsigned long>(snapshot.arrivals),
+      static_cast<unsigned long>(snapshot.removals),
+      static_cast<unsigned long>(snapshot.recordedRows),
+      static_cast<unsigned long>(SampleLog::kCapacity), snapshot.events);
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", json);
   });
   server.on("/api/calibrate", HTTP_POST, []() {
-    resetDetector();
+    lockState();
+    resetDetectorLocked();
+    unlockState();
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", "{\"calibrating\":true}");
   });
@@ -249,13 +349,18 @@ void setup() {
       server.send(400, "application/json", "{\"error\":\"unknown marker\"}");
       return;
     }
-    appendSample(SampleQuality::ManualMarker,
-                 hasValidReading ? distanceMm : 0, 0, lastRangeStatus,
-                 DetectorEvent::None, marker);
+    lockState();
+    appendSampleLocked(SampleQuality::ManualMarker,
+                       hasValidReading ? distanceMm : 0, 0, lastRangeStatus,
+                       DetectorEvent::None, marker);
+    unlockState();
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", "{\"marked\":true}");
   });
   server.on("/api/samples.csv", HTTP_GET, []() {
+    // The sensor task writes the live log while this immutable copy is sent.
+    static SampleLog exportLog;
+    copySampleLog(exportLog);
     server.sendHeader("Cache-Control", "no-store");
     server.sendHeader("Content-Disposition",
                       "attachment; filename=\"sensor-samples.csv\"");
@@ -267,10 +372,10 @@ void setup() {
 
     char block[512];
     size_t blockUsed = 0;
-    const size_t rowCount = sampleLog.size();
+    const size_t rowCount = exportLog.size();
     for (size_t i = 0; i < rowCount; ++i) {
       char row[160];
-      const int length = formatSampleCsvRow(row, sizeof(row), sampleLog.oldest(i));
+      const int length = formatSampleCsvRow(row, sizeof(row), exportLog.oldest(i));
       if (length <= 0 || static_cast<size_t>(length) >= sizeof(row)) continue;
       const size_t rowLength = static_cast<size_t>(length);
       if (blockUsed + rowLength > sizeof(block)) {
@@ -280,19 +385,25 @@ void setup() {
       std::memcpy(block + blockUsed, row, rowLength);
       blockUsed += rowLength;
     }
-    if (blockUsed) server.sendContent(block, blockUsed);
+    if (blockUsed) {
+      server.sendContent(block, blockUsed);
+    }
     server.sendContent("", 0);
   });
   server.onNotFound([]() { server.send(404, "text/plain", "Not found"); });
   server.begin();
+  const BaseType_t taskResult = xTaskCreatePinnedToCore(
+      sensorTask, "vl53l0x-sampling", kSensorTaskStackBytes, nullptr,
+      kSensorTaskPriority, &sensorTaskHandle, kSensorTaskCore);
+  sensorTaskStarted = taskResult == pdPASS;
+  Serial.println(sensorTaskStarted
+                     ? "Sensor sampling task started on core 1."
+                     : "ERROR: Sensor task creation failed; using loop fallback.");
 }
 
 void loop() {
+  if (!sensorTaskStarted) sampleSensorIfDue();
   const uint32_t now = millis();
-  if (now - lastSampleAt >= kSampleIntervalMs) {
-    lastSampleAt = now;
-    sampleSensor();
-  }
 
   const bool wifiConnected = WiFi.status() == WL_CONNECTED;
   if (wifiConnected && !wasWifiConnected) {
