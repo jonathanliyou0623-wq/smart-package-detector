@@ -57,4 +57,5 @@ are deliberately visible in both images.
 This was the September 6 sensor-free milestone. The VL53L0X was subsequently
 wired and tested; see the [real sensor test](real-sensor-test.md). Notification
 delivery through a real TLS broker was subsequently verified; network outage
-recovery and real-doorway behavior remain unverified.
+recovery was also verified for one controlled broker stop/restart cycle.
+Real-doorway behavior remains unverified.

@@ -15,6 +15,8 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **October 8, 2026 notification milestone:** The ESP32 established a certificate-validated TLS connection to an EMQX Cloud Serverless broker and published a controlled gum-container arrival/removal pair. An independent MQTTX Web subscriber received both QoS 0 JSON messages on `smart-package-detector/esp32-01/events`; the device reported four total publishes, zero pending events, zero drops, and zero failures after the test.
 
+> **October 8, 2026 recovery milestone:** With the broker stopped, a gum-container arrival increased the device's RAM queue from zero to one while its published count remained unchanged. After the broker restarted, the queue returned to zero and the published count increased from four to five; EMQX recorded one received QoS 0 PUBLISH and zero dropped incoming messages in the new ESP32 session. MQTTX then received the subsequent removal event, confirming continued operation after recovery.
+
 ## Real sensor dashboard
 
 The current firmware reads only valid VL53L0X measurements in a dedicated
@@ -171,7 +173,7 @@ Open http://10.0.0.47/
 - [x] Isolate sensor acquisition from HTTP/CSV handling with a dedicated FreeRTOS task
 - [x] Add a bounded event queue and optional MQTT/TLS publishing path
 - [x] Configure a real TLS broker and validate subscriber-observed arrival/removal delivery
-- [ ] Validate outage queueing and reconnect delivery on hardware
+- [x] Validate broker-outage queueing and reconnect delivery on hardware
 - [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
 - [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds

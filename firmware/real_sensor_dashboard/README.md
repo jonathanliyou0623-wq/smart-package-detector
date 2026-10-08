@@ -31,5 +31,7 @@ When MQTT is enabled, arrival and removal events enter an eight-record RAM queue
 The network loop publishes the oldest event over TLS and retries local failures
 without blocking sensor acquisition. Queue health and connection state appear on
 the dashboard and status API. A controlled arrival/removal pair has been observed
-by an independent MQTTX subscriber through a real TLS broker; outage/reconnect
-delivery is the remaining hardware validation item documented in the MQTT guide.
+by an independent MQTTX subscriber through a real TLS broker. A controlled
+broker stop/restart also verified RAM queueing, broker-side receipt after
+reconnect, and continued event delivery. See the MQTT guide for the evidence and
+the observed HTTP timeout during one failed connection attempt.

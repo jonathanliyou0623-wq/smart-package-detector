@@ -85,7 +85,21 @@ delivery for this controlled test rather than relying only on PubSubClient's
 local QoS 0 return value. The local configuration remained excluded by
 `*.local.h`; credentials are not present in the repository.
 
-Outage recovery remains a separate hardware check: interrupt connectivity,
-trigger an event, verify `mqtt_pending` increases, restore connectivity, and
-confirm the subscriber receives the queued event. Until that check is complete,
-the project does not claim verified reconnect delivery.
+The same day, broker-outage recovery was tested on hardware. EMQX was stopped
+while the ESP32 remained powered. A gum-container arrival left
+`mqtt_published=4` and increased `mqtt_pending` from zero to one, with zero
+drops. After EMQX restarted, the ESP32 reconnected automatically,
+`mqtt_pending` returned to zero, and `mqtt_published` increased to five. EMQX's
+new ESP32 session recorded one received PUBLISH, one received QoS 0 message, and
+zero dropped incoming messages. This broker-side count confirms receipt of the
+queued event even though the browser subscriber was also disconnected during
+the outage and therefore could not display that non-retained QoS 0 message.
+
+After MQTTX reconnected, removing the container produced sequence 6
+`package_removed`; MQTTX displayed the message and the device reported six
+publishes, zero pending events, and zero drops. The stop/queue/reconnect path is
+therefore validated for one controlled outage cycle. During broker startup, one
+10-second `/api/status` request timed out while the main loop was attempting an
+MQTT connection. Sensor acquisition still runs in its independent task, but
+HTTP responsiveness during failed TLS connection attempts needs separate
+improvement and stress testing.
