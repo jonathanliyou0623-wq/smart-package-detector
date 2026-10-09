@@ -3,13 +3,14 @@
 #include "detector_config.h"
 
 // Controlled tabletop experiment: ~311 mm background, ~200 mm tissue roll.
-// Recalibrate with the scene empty whenever the sensor or background moves.
+// Farther empty-scene drift is followed automatically. Recalibrate whenever
+// the sensor or background moves closer.
 inline DetectorConfig desktopTestConfig() {
   DetectorConfig config;
   config.detectionDeltaMm = 60;
   config.clearDeltaMm = 30;
   // At 10 Hz, 50 consecutive samples require about five seconds of presence.
   config.detectionSamples = 50;
-  config.baselineAlpha = 0.0f;
+  config.baselineAlpha = 0.05f;
   return config;
 }

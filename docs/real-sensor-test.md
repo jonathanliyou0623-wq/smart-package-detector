@@ -9,7 +9,7 @@ This record separates what was observed on the physical prototype from what rema
 - VIN to 3V3, GND to GND, SDA to GPIO21, and SCL to GPIO22
 - sensor aimed at a sheet of white paper on a tabletop
 - tissue roll used as the repeatable test object
-- tabletop profile used for the recorded milestone: 60 mm detection delta, 30 mm clear delta, 30 valid calibration samples, and a fixed post-calibration baseline
+- tabletop profile used for the recorded milestone: 60 mm detection delta, 30 mm clear delta, 30 valid calibration samples, and a baseline that follows only farther empty-background drift
 
 The bare desktop repeatedly returned VL53L0X range status 2 in this arrangement. Keeping the sensor placement and adding white paper produced valid readings. This supports a surface-return explanation for this setup, but it was not a controlled optical characterization of the desk material.
 
@@ -265,3 +265,27 @@ arrival at 274 mm; 50 valid samples confirmed arrival in 4.900 seconds, with a
 `No package` at approximately 339 mm with one arrival, one removal, and zero
 invalid readings since reboot. This confirms that the concurrency change
 preserved the end-to-end detector behavior in one controlled object cycle.
+
+### MQTT retry isolation and baseline correction (October 8)
+
+MQTT/TLS work was moved from the Arduino web loop to a dedicated FreeRTOS task
+on core 0. Before the broker outage, 30 status requests all succeeded with a
+103.8 ms average, 137.9 ms 95th-percentile, and 241.5 ms maximum response time.
+With EMQX deliberately stopped, all 60 additional requests succeeded while the
+device repeatedly attempted to reconnect: average response time was 111.7 ms,
+the 95th percentile was 186.7 ms, and the maximum was 269.3 ms. Restarting EMQX
+restored the MQTT connection without rebooting the ESP32.
+
+The final object check exposed a geometry issue rather than a sensor failure.
+The empty scene had moved from the stored 310 mm baseline to approximately
+344 mm, while the upright gum container measured about 285 mm. Recalibrating the
+empty scene produced one package arrival and one removal; MQTT publish count
+advanced from four to six and the detector totals reached three arrivals and
+three removals. The observation motivated a safer background update rule:
+while clear, the baseline may follow a farther return, which cannot be caused by
+a package entering view, but it never moves toward a closer return. Host tests
+cover both directions, all five test executables pass, and the updated firmware
+compiled at 77% flash and 32% static RAM before successful COM9 upload. A
+post-upload gum-container regression then produced one arrival at 285 mm and one
+removal at 343 mm. The baseline remained 347 mm, both MQTT events published,
+the pending queue stayed at zero, and the device finished in `No package`.

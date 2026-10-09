@@ -42,11 +42,13 @@ wall-clock time. Removal uses `"event":"package_removed"`.
 ## Runtime behavior and limits
 
 The sensor task never performs network I/O. It appends arrival and removal
-events to an eight-entry fixed RAM queue. The Arduino network loop connects to
-the broker, publishes the oldest event, and removes that event only when the
-MQTT client accepts the publish operation. A failed connection or local publish
-keeps the event for a later attempt. If the queue fills, the oldest pending
-events are preserved, newer events are rejected, and the dropped counter rises.
+events to an eight-entry fixed RAM queue. A separate lower-priority MQTT task on
+ESP32 core 0 connects to the broker, services the client, publishes the oldest
+event, and removes that event only when the MQTT client accepts the publish
+operation. If the MQTT task cannot be created, the Arduino loop provides a
+fallback service path. A failed connection or local publish keeps the event for
+a later attempt. If the queue fills, the oldest pending events are preserved,
+newer events are rejected, and the dropped counter rises.
 
 The queue is stored only in RAM and is lost on reboot or power loss. PubSubClient
 publishes at QoS 0, so a successful local call is not a broker acknowledgement;
@@ -98,8 +100,16 @@ the outage and therefore could not display that non-retained QoS 0 message.
 After MQTTX reconnected, removing the container produced sequence 6
 `package_removed`; MQTTX displayed the message and the device reported six
 publishes, zero pending events, and zero drops. The stop/queue/reconnect path is
-therefore validated for one controlled outage cycle. During broker startup, one
-10-second `/api/status` request timed out while the main loop was attempting an
-MQTT connection. Sensor acquisition still runs in its independent task, but
-HTTP responsiveness during failed TLS connection attempts needs separate
-improvement and stress testing.
+therefore validated for one controlled outage cycle.
+
+The initial implementation performed MQTT connection attempts in the Arduino
+web loop. One 10-second `/api/status` request timed out while the broker was
+starting, even though the independent sensor task continued sampling. MQTT/TLS
+service was therefore moved to its own FreeRTOS task. A 30-request online
+baseline then completed without failures (103.8 ms average, 137.9 ms
+95th-percentile, 241.5 ms maximum). With EMQX stopped, 60 of 60 status requests
+again succeeded despite repeated connection failures: average latency was
+111.7 ms, 95th-percentile latency was 186.7 ms, and the maximum was 269.3 ms.
+After EMQX restarted, the device reconnected automatically without a reboot.
+These results validate dashboard responsiveness for this controlled outage and
+local network, rather than every possible Wi-Fi or TLS failure mode.

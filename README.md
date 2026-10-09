@@ -17,6 +17,8 @@ An independent embedded-systems project that detects when an object is placed in
 
 > **October 8, 2026 recovery milestone:** With the broker stopped, a gum-container arrival increased the device's RAM queue from zero to one while its published count remained unchanged. After the broker restarted, the queue returned to zero and the published count increased from four to five; EMQX recorded one received QoS 0 PUBLISH and zero dropped incoming messages in the new ESP32 session. MQTTX then received the subsequent removal event, confirming continued operation after recovery.
 
+> **October 8, 2026 responsiveness milestone:** MQTT/TLS connection work was moved to a dedicated FreeRTOS task so failed broker connections cannot block the local dashboard. With EMQX deliberately stopped, all 60 status requests succeeded: average latency was 111.7 ms, 95th-percentile latency was 186.7 ms, and the maximum was 269.3 ms. The broker was then restarted and the ESP32 reconnected without a device reboot. A setup shift also exposed a stale 310 mm baseline against a new 344 mm empty scene; the firmware now follows only farther empty-background drift, while refusing to adapt toward closer objects that could be packages. After upload, a gum-container cycle produced one arrival and one removal with a stable 347 mm baseline and two successful MQTT publishes.
+
 ## Real sensor dashboard
 
 The current firmware reads only valid VL53L0X measurements in a dedicated
@@ -73,7 +75,8 @@ The detector:
 - applies an exponential moving average to noisy readings;
 - requires a sustained distance decrease before reporting a package;
 - requires sustained clearance before reporting removal; and
-- updates its baseline slowly only while the doorway is clear.
+- follows farther empty-background drift only while clear, without learning a
+  closer object into the baseline.
 
 ## Hardware used / selected
 
@@ -174,6 +177,8 @@ Open http://10.0.0.47/
 - [x] Add a bounded event queue and optional MQTT/TLS publishing path
 - [x] Configure a real TLS broker and validate subscriber-observed arrival/removal delivery
 - [x] Validate broker-outage queueing and reconnect delivery on hardware
+- [x] Isolate MQTT/TLS retries from HTTP handling and stress-test dashboard responsiveness during a broker outage
+- [x] Add one-way empty-background adaptation that cannot absorb closer objects
 - [x] Record the first labeled hand-pass, placement-latency, and removal-latency trials
 - [ ] Collect enough repeated labeled trials to calculate false-positive rate and detection-rate statistics
 - [ ] Collect doorway data and tune thresholds

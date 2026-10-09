@@ -28,6 +28,10 @@ constexpr UBaseType_t kSensorTaskPriority = 2;
 constexpr BaseType_t kSensorTaskCore = 1;
 #if MQTT_NOTIFICATIONS_ENABLED
 constexpr uint32_t kMqttReconnectIntervalMs = 10000;
+constexpr uint32_t kMqttTaskStackBytes = 8192;
+constexpr UBaseType_t kMqttTaskPriority = 1;
+constexpr BaseType_t kMqttTaskCore = 0;
+constexpr TickType_t kMqttTaskDelay = pdMS_TO_TICKS(20);
 #endif
 
 Adafruit_VL53L0X sensor;
@@ -38,6 +42,10 @@ NotificationQueue notificationQueue;
 SemaphoreHandle_t stateMutex = nullptr;
 TaskHandle_t sensorTaskHandle = nullptr;
 bool sensorTaskStarted = false;
+#if MQTT_NOTIFICATIONS_ENABLED
+TaskHandle_t mqttTaskHandle = nullptr;
+bool mqttTaskStarted = false;
+#endif
 bool sensorConnected = false;
 bool wasWifiConnected = false;
 bool hasValidReading = false;
@@ -393,6 +401,13 @@ void serviceMqttNotifications() {
     setMqttRuntimeStatus(false, nullptr);
   }
 }
+
+void mqttTask(void*) {
+  while (true) {
+    serviceMqttNotifications();
+    vTaskDelay(kMqttTaskDelay);
+  }
+}
 #else
 void serviceMqttNotifications() {}
 #endif
@@ -425,7 +440,7 @@ button:disabled{opacity:.55}li{margin:8px 0}#events{padding-left:22px;font-size:
 <dt>Wi-Fi signal</dt><dd id="rssi">--</dd>
 <dt>Running for</dt><dd id="uptime">--</dd>
 <dt>Last update</dt><dd id="updated">--</dd></dl>
-<p class="note">Tabletop test profile: an object must stay at least 60 mm closer than the learned empty background for about 5 seconds before detection. Brief passers-by are ignored. Keep the scene empty during the first 3 seconds after calibration starts.</p>
+<p class="note">Tabletop test profile: an object must stay at least 60 mm closer than the learned empty background for about 5 seconds before detection. Brief passers-by are ignored. A farther empty background is followed automatically; recalibrate after moving the sensor or background closer. Keep the scene empty during the first 3 seconds after calibration starts.</p>
 <button id="recalibrate" type="button">Recalibrate empty background / 重新校准</button>
 <div class="markers"><button type="button" data-marker="hand_pass">Mark hand pass</button>
 <button type="button" data-marker="object_placed">Mark object placed</button>
@@ -583,6 +598,15 @@ void setup() {
   Serial.println(sensorTaskStarted
                      ? "Sensor sampling task started on core 1."
                      : "ERROR: Sensor task creation failed; using loop fallback.");
+#if MQTT_NOTIFICATIONS_ENABLED
+  const BaseType_t mqttTaskResult = xTaskCreatePinnedToCore(
+      mqttTask, "mqtt-notifications", kMqttTaskStackBytes, nullptr,
+      kMqttTaskPriority, &mqttTaskHandle, kMqttTaskCore);
+  mqttTaskStarted = mqttTaskResult == pdPASS;
+  Serial.println(mqttTaskStarted
+                     ? "MQTT notification task started on core 0."
+                     : "ERROR: MQTT task creation failed; using loop fallback.");
+#endif
 }
 
 void loop() {
@@ -596,7 +620,9 @@ void loop() {
     Serial.println("Wi-Fi disconnected. Reconnecting...");
   }
   wasWifiConnected = wifiConnected;
-  serviceMqttNotifications();
+#if MQTT_NOTIFICATIONS_ENABLED
+  if (!mqttTaskStarted) serviceMqttNotifications();
+#endif
   if (wifiConnected) {
     server.handleClient();
   } else if (now - lastReconnectAt >= 15000) {

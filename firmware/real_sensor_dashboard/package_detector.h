@@ -66,9 +66,15 @@ class PackageDetector {
         }
       } else {
         transitionCount_ = 0;
-        // Track slow environmental drift only while clear.
-        // 只在无快递状态下缓慢更新基准，避免把快递学习成背景。
-        baselineMm_ += config_.baselineAlpha * (filteredMm_ - baselineMm_);
+        // A farther return cannot be caused by a package entering the view, so
+        // it is safe to follow that empty-scene drift while the detector is
+        // clear. Never move the baseline toward a closer return here: doing so
+        // could gradually absorb a small or poorly aligned package.
+        // 更远的读数不会由快递进入视野造成，因此空场景可以安全地向更远方向
+        // 跟随；不要向更近的读数更新，否则可能逐渐把小物体学习成背景。
+        if (filteredMm_ > baselineMm_) {
+          baselineMm_ += config_.baselineAlpha * (filteredMm_ - baselineMm_);
+        }
       }
     } else {
       if (obstructionMm <= config_.clearDeltaMm) {
@@ -105,5 +111,4 @@ class PackageDetector {
   float filteredMm_ = 0.0f;
   bool hasFilteredReading_ = false;
 };
-
 

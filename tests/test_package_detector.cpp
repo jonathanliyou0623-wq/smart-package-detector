@@ -72,6 +72,20 @@ void testRemovalRequiresStableClearance() {
   expect(detector.state() == DetectorState::Clear,
          "detector should return to clear state");
 }
+
+void testBaselineOnlyFollowsFartherClearScene() {
+  DetectorConfig config = testConfig();
+  config.baselineAlpha = 0.5f;
+  PackageDetector detector(config);
+  calibrate(detector, 800);
+
+  detector.update(900);
+  expect(detector.baselineMm() == 850,
+         "clear baseline should follow a farther background");
+  detector.update(790);
+  expect(detector.baselineMm() == 850,
+         "clear baseline should not move toward a closer object");
+}
 }  // namespace
 
 int main() {
@@ -79,6 +93,7 @@ int main() {
   testSustainedObstructionTriggersDetection();
   testBriefObstructionIsIgnored();
   testRemovalRequiresStableClearance();
+  testBaselineOnlyFollowsFartherClearScene();
   std::cout << "All package detector tests passed.\n";
   return 0;
 }
